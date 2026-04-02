@@ -26,6 +26,10 @@
       </select>
       <button onclick="addPlayer()" class="bg-pink-300 text-white rounded-2xl px-4 py-2">เพิ่มชื่อ</button>
     </div>
+    <div class="grid md:grid-cols-2 gap-6 mb-6">
+      <div id="mvpChill" class="bg-white rounded-3xl shadow-lg p-4"></div>
+      <div id="mvpSerious" class="bg-white rounded-3xl shadow-lg p-4"></div>
+    </div>
     <div class="grid md:grid-cols-2 gap-6">
       <div>
         <h2 class="text-xl font-bold mb-3">สนามชิล 🌿</h2>
@@ -54,6 +58,25 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const playersRef = collection(db, 'players');
+
+    let playerImages = JSON.parse(localStorage.getItem('playerImages') || '{}');
+
+    function handlePlayerImageUpload(event, playerId) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        playerImages[playerId] = e.target.result;
+        localStorage.setItem('playerImages', JSON.stringify(playerImages));
+        onSnapshot(playersRef, (snapshot) => {
+          const players = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          render(players);
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    window.handlePlayerImageUpload = handlePlayerImageUpload
 
     window.addPlayer = async function () {
       const name = document.getElementById('nameInput').value.trim();
@@ -91,12 +114,31 @@
     function render(players) {
       const chill = document.getElementById('chillList');
       const serious = document.getElementById('seriousList');
+      const mvpChill = document.getElementById('mvpChill');
+      const mvpSerious = document.getElementById('mvpSerious');
       chill.innerHTML = '';
       serious.innerHTML = '';
 
-      players.sort((a,b) => b.wins - a.wins || a.losses - b.losses);
+      const chillPlayers = players.filter(p => p.court === 'chill').sort((a,b) => b.wins - a.wins || a.losses - b.losses);
+      const seriousPlayers = players.filter(p => p.court === 'serious').sort((a,b) => b.wins - a.wins || a.losses - b.losses);
 
-      players.forEach((p, index) => {
+      const chillMvp = chillPlayers[0];
+      const seriousMvp = seriousPlayers[0];
+
+      mvpChill.innerHTML = chillMvp
+        ? `<div class="bg-gradient-to-r from-pink-200 to-yellow-100 rounded-3xl shadow-xl p-5 border-2 border-pink-300 ring-4 ring-pink-100"><div class="flex items-center justify-between mb-3"><div class="text-xl font-extrabold text-pink-500">🏆 MVP ประจำสัปดาห์ สนามชิล 🌿</div><div class="text-2xl">✨</div></div><div class="flex items-center gap-4"><div class="w-20 h-20 rounded-full overflow-hidden bg-white shadow-lg border-4 border-white flex items-center justify-center text-4xl">${playerImages[chillMvp.id] ? `<img src="${playerImages[chillMvp.id]}" class="w-full h-full object-cover" />` : '🏆'}</div><div><div class="font-bold text-lg text-gray-800">${chillMvp.name}</div><div class="text-sm text-gray-600">ชนะ ${chillMvp.wins} เกม</div><div class="text-xs text-pink-500 font-semibold mt-1">Weekly Star ⭐</div></div></div></div>`
+        : '<div class="bg-white rounded-3xl shadow-lg p-4"><div class="text-lg font-bold">MVP สนามชิล 🌿</div><div class="text-gray-400">ยังไม่มีผู้เล่น</div></div>';
+
+      mvpSerious.innerHTML = seriousMvp
+        ? `<div class="bg-gradient-to-r from-purple-200 to-orange-100 rounded-3xl shadow-xl p-5 border-2 border-purple-300 ring-4 ring-purple-100"><div class="flex items-center justify-between mb-3"><div class="text-xl font-extrabold text-purple-600">🏆 MVP ประจำสัปดาห์ สนามจริงจัง 🔥</div><div class="text-2xl">⚡</div></div><div class="flex items-center gap-4"><div class="w-20 h-20 rounded-full overflow-hidden bg-white shadow-lg border-4 border-white flex items-center justify-center text-4xl">${playerImages[seriousMvp.id] ? `<img src="${playerImages[seriousMvp.id]}" class="w-full h-full object-cover" />` : '🏆'}</div><div><div class="font-bold text-lg text-gray-800">${seriousMvp.name}</div><div class="text-sm text-gray-600">ชนะ ${seriousMvp.wins} เกม</div><div class="text-xs text-purple-500 font-semibold mt-1">Champion of the Week 👑</div></div></div></div>`
+        : '<div class="bg-white rounded-3xl shadow-lg p-4"><div class="text-lg font-bold">MVP สนามจริงจัง 🔥</div><div class="text-gray-400">ยังไม่มีผู้เล่น</div></div>';
+
+      renderCourtList(chillPlayers, chill, 'chill');
+      renderCourtList(seriousPlayers, serious, 'serious');
+    }
+
+    function renderCourtList(list, container, courtType) {
+      list.forEach((p, index) => {
         const total = p.wins + p.losses;
         const rate = total ? Math.round((p.wins / total) * 100) : 0;
         const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index+1}`;
@@ -104,18 +146,18 @@
         const card = document.createElement('div');
         card.className = 'bg-white rounded-3xl shadow-lg p-4 mb-3';
         card.innerHTML = `
-          <div class="flex items-start justify-between"><div class="font-bold text-lg">${medal} ${p.name}</div>${index === 0 ? '<div class="bg-pink-300 text-white text-xs font-bold px-2 py-1 rounded-full shadow">MVP ✨</div>' : ''}</div>
+          <div class="flex items-start justify-between gap-3"><div class="flex items-center gap-3"><div class="w-12 h-12 rounded-full overflow-hidden bg-pink-100 flex items-center justify-center text-xl">${playerImages[p.id] ? `<img src="${playerImages[p.id]}" class="w-full h-full object-cover" />` : '👤'}</div><div class="font-bold text-lg">${medal} ${p.name}</div></div>${index === 0 ? '<div class="bg-pink-300 text-white text-xs font-bold px-2 py-1 rounded-full shadow">MVP ✨</div>' : ''}</div>
           <div>ชนะ ${p.wins} เกม | แพ้ ${p.losses} เกม</div>
           <div>อัตราชนะ ${rate}%</div>
-          <div class="mt-2 flex gap-2 flex-wrap">
+          <div class="mt-2 flex gap-2 flex-wrap items-center">
+            <input type="file" accept="image/*" onchange="handlePlayerImageUpload(event, '${p.id}')" class="text-xs" />
             <button class="bg-green-400 hover:bg-green-500 text-white px-3 py-1 rounded-xl shadow" onclick="updateScore('${p.id}','wins',${p.wins})">ชนะ</button>
             <button class="bg-red-400 hover:bg-red-500 text-white px-3 py-1 rounded-xl shadow" onclick="updateScore('${p.id}','losses',${p.losses})">แพ้</button>
             <button class="bg-yellow-300 hover:bg-yellow-400 text-white px-3 py-1 rounded-xl shadow" onclick="resetScore('${p.id}')">รีเซ็ต</button>
             <button class="bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded-xl shadow" onclick="deletePlayer('${p.id}')">ลบ</button>
           </div>
         `;
-
-        (p.court === 'chill' ? chill : serious).appendChild(card);
+        container.appendChild(card);
       });
     }
   </script>
