@@ -98,14 +98,14 @@
         const card = document.createElement('div');
         card.className = 'bg-white rounded-3xl shadow-lg p-4 mb-3';
         card.innerHTML = `
-          <div class="font-bold text-lg">${medal} ${p.name}</div>
+          <div class="flex items-start justify-between"><div class="font-bold text-lg">${medal} ${p.name}</div>${index === 0 ? '<div class="bg-pink-300 text-white text-xs font-bold px-2 py-1 rounded-full shadow">MVP ✨</div>' : ''}</div>
           <div>ชนะ ${p.wins} เกม | แพ้ ${p.losses} เกม</div>
           <div>อัตราชนะ ${rate}%</div>
           <div class="mt-2 flex gap-2 flex-wrap">
-            <button onclick="updateScore('${p.id}','wins',${p.wins})">ชนะ</button>
-            <button onclick="updateScore('${p.id}','losses',${p.losses})">แพ้</button>
-            <button onclick="resetScore('${p.id}')">รีเซ็ต</button>
-            <button onclick="deletePlayer('${p.id}')">ลบ</button>
+            <button class="bg-green-400 hover:bg-green-500 text-white px-3 py-1 rounded-xl shadow" onclick="updateScore('${p.id}','wins',${p.wins})">ชนะ</button>
+            <button class="bg-red-400 hover:bg-red-500 text-white px-3 py-1 rounded-xl shadow" onclick="updateScore('${p.id}','losses',${p.losses})">แพ้</button>
+            <button class="bg-yellow-300 hover:bg-yellow-400 text-white px-3 py-1 rounded-xl shadow" onclick="resetScore('${p.id}')">รีเซ็ต</button>
+            <button class="bg-gray-400 hover:bg-gray-500 text-white px-3 py-1 rounded-xl shadow" onclick="deletePlayer('${p.id}')">ลบ</button>
           </div>
         `;
 
