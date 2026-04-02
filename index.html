@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Everyweeks Scoreboard 🏸</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-pink-100 via-purple-100 to-blue-100 min-h-screen p-6">
+  <div class="max-w-5xl mx-auto">
+    <h1 class="text-5xl font-extrabold mb-6 text-center text-pink-400">Everyweeks Scoreboard 🏸</h1>
+    <div class="bg-white rounded-3xl shadow-lg p-4 mb-6 flex gap-2 flex-wrap items-center">
+      <input id="nameInput" class="border rounded-xl p-2" placeholder="ชื่อผู้เล่น" />
+      <select id="emojiInput" class="border rounded-xl p-2">
+        <option>🐯</option><option>🐲</option><option>🦊</option><option>🐼</option><option>💖</option>
+      </select>
+      <select id="courtInput" class="border rounded-xl p-2">
+        <option value="chill">สนามชิล 🌿</option>
+        <option value="serious">สนามจริงจัง 🔥</option>
+      </select>
+      <button onclick="addPlayer()" class="bg-pink-300 text-white rounded-2xl px-4 py-2">เพิ่มชื่อ</button>
+    </div>
+    <div class="grid md:grid-cols-2 gap-6">
+      <div>
+        <h2 class="text-xl font-bold mb-3">สนามชิล 🌿</h2>
+        <div id="chillList"></div>
+      </div>
+      <div>
+        <h2 class="text-xl font-bold mb-3">สนามจริงจัง 🔥</h2>
+        <div id="seriousList"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+    const firebaseConfig = {
+      apiKey: 'AIzaSyDV6uhww9kQZqsMKDB6ucxOW-PEXv3srLY',
+      authDomain: 'everyweeks-scoreboard.firebaseapp.com',
+      projectId: 'everyweeks-scoreboard',
+      storageBucket: 'everyweeks-scoreboard.firebasestorage.app',
+      messagingSenderId: '576244460239',
+      appId: '1:576244460239:web:d90f93c5a6d63043ce65ba'
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const playersRef = collection(db, 'players');
+
+    window.addPlayer = async function () {
+      const name = document.getElementById('nameInput').value.trim();
+      const emoji = document.getElementById('emojiInput').value;
+      const court = document.getElementById('courtInput').value;
+      if (!name) return;
+
+      await addDoc(playersRef, {
+        name: `${emoji} ${name}`,
+        wins: 0,
+        losses: 0,
+        court
+      });
+
+      document.getElementById('nameInput').value = '';
+    }
+
+    window.updateScore = async function (id, field, current) {
+      await updateDoc(doc(db, 'players', id), { [field]: current + 1 });
+    }
+
+    window.resetScore = async function (id) {
+      await updateDoc(doc(db, 'players', id), { wins: 0, losses: 0 });
+    }
+
+    window.deletePlayer = async function (id) {
+      await deleteDoc(doc(db, 'players', id));
+    }
+
+    onSnapshot(playersRef, (snapshot) => {
+      const players = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      render(players);
+    });
+
+    function render(players) {
+      const chill = document.getElementById('chillList');
+      const serious = document.getElementById('seriousList');
+      chill.innerHTML = '';
+      serious.innerHTML = '';
+
+      players.sort((a,b) => b.wins - a.wins || a.losses - b.losses);
+
+      players.forEach((p, index) => {
+        const total = p.wins + p.losses;
+        const rate = total ? Math.round((p.wins / total) * 100) : 0;
+        const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index+1}`;
+
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-3xl shadow-lg p-4 mb-3';
+        card.innerHTML = `
+          <div class="font-bold text-lg">${medal} ${p.name}</div>
+          <div>ชนะ ${p.wins} เกม | แพ้ ${p.losses} เกม</div>
+          <div>อัตราชนะ ${rate}%</div>
+          <div class="mt-2 flex gap-2 flex-wrap">
+            <button onclick="updateScore('${p.id}','wins',${p.wins})">ชนะ</button>
+            <button onclick="updateScore('${p.id}','losses',${p.losses})">แพ้</button>
+            <button onclick="resetScore('${p.id}')">รีเซ็ต</button>
+            <button onclick="deletePlayer('${p.id}')">ลบ</button>
+          </div>
+        `;
+
+        (p.court === 'chill' ? chill : serious).appendChild(card);
+      });
+    }
+  </script>
+</body>
+</html>
