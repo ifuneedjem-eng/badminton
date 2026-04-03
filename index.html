@@ -45,6 +45,7 @@
   <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
     import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    // Cloudinary will be used for profile image uploads
 
     const firebaseConfig = {
       apiKey: 'AIzaSyDV6uhww9kQZqsMKDB6ucxOW-PEXv3srLY',
@@ -57,21 +58,32 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const CLOUDINARY_CLOUD_NAME = 'drw5eylji';
+    const CLOUDINARY_UPLOAD_PRESET = 'badminton_upload';
     const playersRef = collection(db, 'players');
 
-    let playerImages = JSON.parse(localStorage.getItem('playerImages') || '{}');
+    let playerImages = {};
     let currentPlayers = [];
 
-    function handlePlayerImageUpload(event, playerId) {
+    async function handlePlayerImageUpload(event, playerId) {
       const file = event.target.files[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        playerImages[playerId] = e.target.result;
-        localStorage.setItem('playerImages', JSON.stringify(playerImages));
-        render(currentPlayers);
-      };
-      reader.readAsDataURL(file);
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+      const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+      const imageUrl = data.secure_url;
+
+      playerImages[playerId] = imageUrl;
+      await updateDoc(doc(db, 'players', playerId), { imageUrl });
+      render(currentPlayers);
     }
 
     window.handlePlayerImageUpload = handlePlayerImageUpload
@@ -106,6 +118,7 @@
 
     onSnapshot(playersRef, (snapshot) => {
       const players = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      playerImages = Object.fromEntries(players.map(p => [p.id, p.imageUrl || '']));
       currentPlayers = players;
       render(players);
     });
