@@ -60,6 +60,7 @@
     const playersRef = collection(db, 'players');
 
     let playerImages = JSON.parse(localStorage.getItem('playerImages') || '{}');
+    let currentPlayers = [];
 
     function handlePlayerImageUpload(event, playerId) {
       const file = event.target.files[0];
@@ -68,10 +69,7 @@
       reader.onload = function(e) {
         playerImages[playerId] = e.target.result;
         localStorage.setItem('playerImages', JSON.stringify(playerImages));
-        onSnapshot(playersRef, (snapshot) => {
-          const players = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-          render(players);
-        });
+        render(currentPlayers);
       };
       reader.readAsDataURL(file);
     }
@@ -108,6 +106,7 @@
 
     onSnapshot(playersRef, (snapshot) => {
       const players = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      currentPlayers = players;
       render(players);
     });
 
